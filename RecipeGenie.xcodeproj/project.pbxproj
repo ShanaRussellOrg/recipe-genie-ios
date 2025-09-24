@@ -6,6 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DBC70F762E846BDF004CA6AA /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = DBC70F752E846BDF004CA6AA /* Supabase */; };
+		DBC981022E83827D00E24A9E /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = DBC981012E83827D00E24A9E /* Auth */; };
+		DBC981042E83827D00E24A9E /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = DBC981032E83827D00E24A9E /* Functions */; };
+		DBC981062E83827D00E24A9E /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = DBC981052E83827D00E24A9E /* PostgREST */; };
+		DBC981082E83827D00E24A9E /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = DBC981072E83827D00E24A9E /* Realtime */; };
+		DBC9810A2E83827D00E24A9E /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = DBC981092E83827D00E24A9E /* Storage */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		DBC980962E831C8E00E24A9E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,9 +38,26 @@
 		DBC9809F2E831C8E00E24A9E /* RecipeGenieUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RecipeGenieUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		DBC980F62E83799C00E24A9E /* Exceptions for "RecipeGenie" folder in "RecipeGenie" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ContentView.swift,
+				Info.plist,
+				RecipeGenieDiagnostics.swift,
+				SimplifiedRecipeGenie.swift,
+				TestEnvironmentVariables.swift,
+			);
+			target = DBC980852E831C8B00E24A9E /* RecipeGenie */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DBC980882E831C8B00E24A9E /* RecipeGenie */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DBC980F62E83799C00E24A9E /* Exceptions for "RecipeGenie" folder in "RecipeGenie" target */,
+			);
 			path = RecipeGenie;
 			sourceTree = "<group>";
 		};
@@ -52,6 +78,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DBC981062E83827D00E24A9E /* PostgREST in Frameworks */,
+				DBC981042E83827D00E24A9E /* Functions in Frameworks */,
+				DBC70F762E846BDF004CA6AA /* Supabase in Frameworks */,
+				DBC981022E83827D00E24A9E /* Auth in Frameworks */,
+				DBC9810A2E83827D00E24A9E /* Storage in Frameworks */,
+				DBC981082E83827D00E24A9E /* Realtime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +144,12 @@
 			);
 			name = RecipeGenie;
 			packageProductDependencies = (
+				DBC981012E83827D00E24A9E /* Auth */,
+				DBC981032E83827D00E24A9E /* Functions */,
+				DBC981052E83827D00E24A9E /* PostgREST */,
+				DBC981072E83827D00E24A9E /* Realtime */,
+				DBC981092E83827D00E24A9E /* Storage */,
+				DBC70F752E846BDF004CA6AA /* Supabase */,
 			);
 			productName = RecipeGenie;
 			productReference = DBC980862E831C8B00E24A9E /* RecipeGenie.app */;
@@ -195,6 +233,9 @@
 			);
 			mainGroup = DBC9807D2E831C8B00E24A9E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DBC70F742E846BDF004CA6AA /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DBC980872E831C8B00E24A9E /* Products */;
 			projectDirPath = "";
@@ -400,6 +441,7 @@
 				DEVELOPMENT_TEAM = KYUTBK4JA9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RecipeGenie/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -432,6 +474,7 @@
 				DEVELOPMENT_TEAM = KYUTBK4JA9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RecipeGenie/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -578,6 +621,45 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DBC70F742E846BDF004CA6AA /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DBC70F752E846BDF004CA6AA /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DBC70F742E846BDF004CA6AA /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		DBC981012E83827D00E24A9E /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Auth;
+		};
+		DBC981032E83827D00E24A9E /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Functions;
+		};
+		DBC981052E83827D00E24A9E /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PostgREST;
+		};
+		DBC981072E83827D00E24A9E /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Realtime;
+		};
+		DBC981092E83827D00E24A9E /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Storage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = DBC9807E2E831C8B00E24A9E /* Project object */;
 }
