@@ -305,14 +305,16 @@ class MockAuthService: ObservableObject {
             throw AuthError.passwordTooWeak
         }
         
-        // Create a mock user
-        let newUser = User(id: UUID().uuidString, email: credentials.email)
-        
+        // For mock service, simulate email confirmation requirement
+        // Don't automatically log user in after signup
         await MainActor.run {
-            self.user = newUser
-            self.isAuthenticated = true
+            self.user = nil
+            self.isAuthenticated = false
             self.isLoading = false
         }
+
+        // In a real app, this would send a confirmation email
+        print("Mock signup successful for \(credentials.email). Please check your email to confirm your account.")
     }
     
     func login(with credentials: AuthCredentials) async throws {
@@ -1124,14 +1126,39 @@ struct AuthModalView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                Text("Login / Sign Up")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(Color("brand-brown"))
-                
-                Text("To continue extracting recipes, please log in or create an account. As a registered user, you get 3 free recipe extractions.")
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(Color("brand-gray"))
+                if authViewModel.signupCompletedSuccessfully {
+                    // Success view for signup
+                    Text("Check Your Email!")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(Color("brand-brown"))
+
+                    Text("We've sent you a confirmation email. Please check your inbox and click the confirmation link to activate your account.")
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(Color("brand-gray"))
+
+                    Button(action: {
+                        presentationMode.wrappedValue.dismiss()
+                    }) {
+                        Text("Got it")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color("brand-orange"))
+                            .cornerRadius(8)
+                    }
+                    .padding(.horizontal)
+                } else {
+                    // Regular auth form
+                    Text("Login / Sign Up")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(Color("brand-brown"))
+
+                    Text("To continue extracting recipes, please log in or create an account. As a registered user, you get 3 free recipe extractions.")
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(Color("brand-gray"))
                 
                 VStack {
                     TextField("Email", text: $authViewModel.email)
@@ -1185,10 +1212,11 @@ struct AuthModalView: View {
                 }
                 .padding(.top)
                 
-                Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .foregroundColor(Color("brand-gray"))
                 }
-                .foregroundColor(Color("brand-gray"))
             }
             .padding()
             .navigationBarTitleDisplayMode(.inline)
@@ -1202,7 +1230,10 @@ struct AuthModalView: View {
         }
         .onChange(of: authViewModel.didCompleteAction) { completed in
             if completed {
-                presentationMode.wrappedValue.dismiss()
+                // For signup, don't dismiss immediately - show success message first
+                if !authViewModel.signupCompletedSuccessfully {
+                    presentationMode.wrappedValue.dismiss()
+                }
             }
         }
     }
@@ -1216,6 +1247,7 @@ class AuthViewModel: ObservableObject {
     @Published var isSignupMode = true
     @Published var isActionDisabled = false
     @Published var didCompleteAction = false
+    @Published var signupCompletedSuccessfully = false
     
     private let authService = MockAuthService.shared
     
@@ -1246,12 +1278,17 @@ class AuthViewModel: ObservableObject {
                 }
                 
                 try await authService.signup(with: credentials)
+
+                await MainActor.run {
+                    self.signupCompletedSuccessfully = true
+                    self.didCompleteAction = true
+                }
             } else {
                 try await authService.login(with: credentials)
-            }
-            
-            await MainActor.run {
-                self.didCompleteAction = true
+
+                await MainActor.run {
+                    self.didCompleteAction = true
+                }
             }
         } catch let error as AuthError {
             await MainActor.run {

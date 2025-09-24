@@ -71,10 +71,13 @@ class RealAuthService: ObservableObject {
             
             if let user = authResponse?.user {
                 await MainActor.run {
-                    self.user = User(id: user.id.uuidString, email: user.email ?? "")
-                    self.isAuthenticated = true
+                    // Don't automatically log user in after signup
+                    // Supabase requires email confirmation by default
+                    self.user = nil
+                    self.isAuthenticated = false
                     self.isLoading = false
                 }
+                print("Signup successful for \(user.email ?? "user"). Please check your email to confirm your account.")
             }
         } catch let error {
             await MainActor.run {
