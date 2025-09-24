@@ -1403,7 +1403,82 @@ struct SimplifiedRecipeGenieApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onOpenURL { url in
+                    handleDeepLink(url: url)
+                }
         }
+    }
+
+    private func handleDeepLink(url: URL) {
+        print("📱 Received deep link: \(url)")
+
+        // Check if this is an auth callback
+        if url.scheme == "recipegenie" && url.host == "auth" {
+            handleAuthCallback(url: url)
+        }
+    }
+
+    private func handleAuthCallback(url: URL) {
+        print("🔐 Handling auth callback: \(url)")
+
+        // Extract query parameters
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
+              let queryItems = components.queryItems else {
+            print("❌ Could not parse URL components")
+            return
+        }
+
+        // Look for access token or error
+        var accessToken: String?
+        var refreshToken: String?
+        var errorDescription: String?
+
+        for item in queryItems {
+            switch item.name {
+            case "access_token":
+                accessToken = item.value
+            case "refresh_token":
+                refreshToken = item.value
+            case "error_description":
+                errorDescription = item.value
+            default:
+                break
+            }
+        }
+
+        if let error = errorDescription {
+            print("❌ Auth error: \(error)")
+            // Show error to user
+            DispatchQueue.main.async {
+                // You could show an alert here
+                print("Authentication failed: \(error)")
+            }
+        } else if let token = accessToken {
+            print("✅ Authentication successful, access token received")
+            // Handle successful authentication
+            DispatchQueue.main.async {
+                // Update authentication state
+                handleSuccessfulEmailConfirmation(accessToken: token, refreshToken: refreshToken)
+            }
+        }
+    }
+
+    private func handleSuccessfulEmailConfirmation(accessToken: String, refreshToken: String?) {
+        // For now, just log the success
+        // In a real implementation, you would:
+        // 1. Store the tokens securely
+        // 2. Update the auth service state
+        // 3. Navigate the user to the main app
+        print("🎉 Email confirmed successfully!")
+        print("Access Token: \(accessToken)")
+
+        // Update the auth service to reflect the confirmed state
+        #if canImport(Supabase)
+        Task {
+            // You could call RealAuthService.shared to update the session
+            print("TODO: Update RealAuthService with confirmed session")
+        }
+        #endif
     }
 }
 

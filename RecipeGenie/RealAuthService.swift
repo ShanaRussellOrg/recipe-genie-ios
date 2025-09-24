@@ -66,7 +66,8 @@ class RealAuthService: ObservableObject {
         do {
             let authResponse = try await supabase?.auth.signUp(
                 email: credentials.email,
-                password: credentials.password
+                password: credentials.password,
+                redirectTo: URL(string: "recipegenie://auth/callback")
             )
             
             if let user = authResponse?.user {
