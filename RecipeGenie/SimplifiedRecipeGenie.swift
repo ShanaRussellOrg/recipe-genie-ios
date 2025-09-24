@@ -436,7 +436,7 @@ class RecipeGenieViewModel: ObservableObject {
     private let FREE_LIMIT_AUTH = 3
     private let FREE_LIMIT_ANON = 1
     
-    let authService = MockAuthService.shared
+    @ObservedObject var authService = MockAuthService.shared
     let profileService = MockProfileService.shared
     
     func handleImageSelection(_ image: UIImage) {
