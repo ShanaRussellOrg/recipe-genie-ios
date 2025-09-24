@@ -1127,26 +1127,108 @@ struct AuthModalView: View {
         NavigationView {
             VStack(spacing: 20) {
                 if authViewModel.signupCompletedSuccessfully {
-                    // Success view for signup
-                    Text("Check Your Email!")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(Color("brand-brown"))
+                    // Success view for signup with prominent email verification notice
+                    VStack(spacing: 24) {
+                        // Success icon and title
+                        VStack(spacing: 16) {
+                            Image(systemName: "envelope.circle.fill")
+                                .font(.system(size: 64))
+                                .foregroundColor(Color("brand-orange"))
 
-                    Text("We've sent you a confirmation email. Please check your inbox and click the confirmation link to activate your account.")
-                        .multilineTextAlignment(.center)
-                        .foregroundColor(Color("brand-gray"))
+                            Text("Account Created!")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                                .foregroundColor(Color("brand-brown"))
+                        }
 
-                    Button(action: {
-                        presentationMode.wrappedValue.dismiss()
-                    }) {
-                        Text("Got it")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
+                        // Email verification notice with background
+                        VStack(spacing: 16) {
+                            Text("⚠️ Email Verification Required")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color("brand-orange"))
+
+                            Text("Before you can log in, you need to verify your email address:")
+                                .font(.body)
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(Color("brand-brown"))
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("1.")
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(Color("brand-orange"))
+                                    Text("Check your email inbox")
+                                        .foregroundColor(Color("brand-gray"))
+                                }
+
+                                HStack {
+                                    Text("2.")
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(Color("brand-orange"))
+                                    Text("Look for an email from Recipe Genie")
+                                        .foregroundColor(Color("brand-gray"))
+                                }
+
+                                HStack {
+                                    Text("3.")
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(Color("brand-orange"))
+                                    Text("Click the confirmation link")
+                                        .foregroundColor(Color("brand-gray"))
+                                }
+
+                                HStack {
+                                    Text("4.")
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(Color("brand-orange"))
+                                    Text("Return here and log in")
+                                        .foregroundColor(Color("brand-gray"))
+                                }
+                            }
                             .padding()
-                            .background(Color("brand-orange"))
-                            .cornerRadius(8)
+                            .background(Color("cream").opacity(0.3))
+                            .cornerRadius(12)
+                        }
+                        .padding()
+                        .background(Color("cream").opacity(0.1))
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color("brand-orange").opacity(0.3), lineWidth: 2)
+                        )
+
+                        // Action buttons
+                        VStack(spacing: 12) {
+                            Button(action: {
+                                presentationMode.wrappedValue.dismiss()
+                            }) {
+                                Text("Got it - I'll check my email")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color("brand-orange"))
+                                    .cornerRadius(12)
+                            }
+
+                            Button(action: {
+                                Task {
+                                    await authViewModel.resendConfirmationEmail()
+                                }
+                            }) {
+                                Text("Resend confirmation email")
+                                    .font(.subheadline)
+                                    .foregroundColor(Color("brand-orange"))
+                                    .underline()
+                            }
+                            .disabled(authViewModel.isActionDisabled)
+
+                            Text("Didn't receive the email? Check your spam folder or try resending")
+                                .font(.caption)
+                                .foregroundColor(Color("brand-gray"))
+                                .multilineTextAlignment(.center)
+                        }
                     }
                     .padding(.horizontal)
                 } else {
@@ -1331,6 +1413,24 @@ class AuthViewModel: ObservableObject {
     
     func clearError() {
         errorMessage = ""
+    }
+
+    func resendConfirmationEmail() async {
+        isActionDisabled = true
+        clearError()
+
+        do {
+            try await authService.resendConfirmationEmail(to: email)
+            await MainActor.run {
+                self.errorMessage = "Confirmation email sent! Please check your inbox."
+                self.isActionDisabled = false
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Failed to resend email. Please try again."
+                self.isActionDisabled = false
+            }
+        }
     }
 }
 
