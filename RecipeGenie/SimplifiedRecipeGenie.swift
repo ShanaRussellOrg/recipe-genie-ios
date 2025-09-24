@@ -1167,16 +1167,42 @@ struct AuthModalView: View {
                         .autocapitalization(.none)
                         .keyboardType(.emailAddress)
                         .disableAutocorrection(true)
+                        .submitLabel(.next)
+                        .onSubmit {
+                            // Move focus to password field
+                        }
                     
                     SecureField("Password", text: $authViewModel.password)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .padding(.horizontal)
+                        .textContentType(authViewModel.isSignupMode ? .newPassword : .password)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                        .submitLabel(authViewModel.isSignupMode ? .next : .done)
+                        .onSubmit {
+                            if !authViewModel.isSignupMode {
+                                // Login mode - submit the form
+                                Task {
+                                    await authViewModel.performAction()
+                                }
+                            }
+                        }
                 }
                 
                 if authViewModel.isSignupMode {
                     SecureField("Confirm Password", text: $authViewModel.confirmPassword)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .padding(.horizontal)
+                        .textContentType(.newPassword)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            // Signup mode - submit the form
+                            Task {
+                                await authViewModel.performAction()
+                            }
+                        }
                 }
                 
                 if !authViewModel.errorMessage.isEmpty {
