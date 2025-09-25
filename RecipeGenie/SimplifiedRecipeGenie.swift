@@ -1128,6 +1128,7 @@ struct AuthModalView: View {
             VStack(spacing: 20) {
                 if authViewModel.signupCompletedSuccessfully {
                     // Success view for signup with prominent email verification notice
+                    let _ = print("📧 DEBUG: Showing email verification modal")
                     VStack(spacing: 24) {
                         // Success icon and title
                         VStack(spacing: 16) {
@@ -1337,10 +1338,15 @@ struct AuthModalView: View {
             }
         }
         .onChange(of: authViewModel.didCompleteAction) { completed in
+            print("🔄 DEBUG: didCompleteAction changed to: \(completed)")
             if completed {
+                print("📱 DEBUG: signupCompletedSuccessfully is: \(authViewModel.signupCompletedSuccessfully)")
                 // For signup, don't dismiss immediately - show success message first
                 if !authViewModel.signupCompletedSuccessfully {
+                    print("🚪 DEBUG: Dismissing modal (not a signup completion)")
                     presentationMode.wrappedValue.dismiss()
+                } else {
+                    print("📧 DEBUG: Keeping modal open for signup completion")
                 }
             }
         }
@@ -1387,9 +1393,13 @@ class AuthViewModel: ObservableObject {
                 
                 try await authService.signup(with: credentials)
 
+                print("🎉 DEBUG: Signup successful, setting completion states")
                 await MainActor.run {
+                    print("🎉 DEBUG: Setting signupCompletedSuccessfully = true")
                     self.signupCompletedSuccessfully = true
+                    print("🎉 DEBUG: Setting didCompleteAction = true")
                     self.didCompleteAction = true
+                    print("🎉 DEBUG: Completion states set successfully")
                 }
             } else {
                 try await authService.login(with: credentials)
@@ -1399,11 +1409,13 @@ class AuthViewModel: ObservableObject {
                 }
             }
         } catch let error as AuthError {
+            print("❌ DEBUG: AuthError occurred: \(error)")
             await MainActor.run {
                 self.errorMessage = error.localizedDescription
                 self.isActionDisabled = false
             }
         } catch {
+            print("❌ DEBUG: General error occurred: \(error)")
             await MainActor.run {
                 self.errorMessage = error.localizedDescription
                 self.isActionDisabled = false
