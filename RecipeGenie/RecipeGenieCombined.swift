@@ -549,7 +549,7 @@ struct ContentView: View {
                         ImageUploaderView(viewModel: viewModel)
                     case .recipe:
                         if let recipe = viewModel.recipe {
-                            RecipeDisplayView(recipe: recipe)
+                            RecipeDisplayView(recipe: recipe, viewModel: viewModel)
                         }
                     }
                     
@@ -979,6 +979,7 @@ struct ImagePicker: UIViewControllerRepresentable {
 
 struct RecipeDisplayView: View {
     let recipe: Recipe
+    @ObservedObject var viewModel: RecipeGenieViewModel
     @State private var selectedFormat: RecipeFormat = .text
     @State private var showCopySuccess = false
 
@@ -1036,6 +1037,9 @@ struct RecipeDisplayView: View {
 
                 // Preview section
                 RecipePreviewView(recipe: recipe, format: selectedFormat)
+
+                // Start New Recipe button section
+                StartNewRecipeButtonView(viewModel: viewModel)
             }
             .padding()
         }
@@ -1196,6 +1200,75 @@ struct CopySuccessBanner: View {
         .shadow(radius: 8)
         .padding(.horizontal)
         .padding(.top, 8)
+    }
+}
+
+struct StartNewRecipeButtonView: View {
+    @ObservedObject var viewModel: RecipeGenieViewModel
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Divider
+            HStack {
+                VStack {
+                    Divider()
+                        .background(Color("brand-gray").opacity(0.3))
+                }
+
+                Text("Ready for another?")
+                    .font(.caption)
+                    .foregroundColor(Color("brand-gray"))
+                    .padding(.horizontal, 12)
+
+                VStack {
+                    Divider()
+                        .background(Color("brand-gray").opacity(0.3))
+                }
+            }
+            .padding(.vertical, 8)
+
+            // Start New Recipe button
+            Button(action: {
+                startNewRecipe()
+            }) {
+                HStack {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                    Text("Start New Recipe")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color("brand-orange"), Color("brand-orange").opacity(0.8)]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(12)
+                .shadow(radius: 4)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Helper text
+            Text("Upload another handwritten recipe to digitize")
+                .font(.caption)
+                .foregroundColor(Color("brand-gray"))
+                .multilineTextAlignment(.center)
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(radius: 2)
+    }
+
+    private func startNewRecipe() {
+        // Reset the current recipe and navigate to uploader
+        viewModel.resetState()
+        viewModel.showUploader()
     }
 }
 

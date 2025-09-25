@@ -552,7 +552,7 @@ struct ContentView: View {
                         ImageUploaderView(viewModel: viewModel)
                     case .recipe:
                         if let recipe = viewModel.recipe {
-                            RecipeDisplayView(recipe: recipe)
+                            RecipeDisplayView(recipe: recipe, viewModel: viewModel)
                         }
                     }
                     
