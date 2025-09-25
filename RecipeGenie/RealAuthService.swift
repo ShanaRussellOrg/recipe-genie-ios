@@ -6,11 +6,12 @@ import Supabase
 
 class RealAuthService: ObservableObject {
     static let shared = RealAuthService()
-    
+
     @Published var user: User?
     @Published var isAuthenticated = false
     @Published var isLoading = false
     @Published var authError: String?
+    @Published var signupCompletedSuccessfully = false
     
     #if canImport(Supabase)
     private var supabase: SupabaseClient?
@@ -58,7 +59,7 @@ class RealAuthService: ObservableObject {
         #endif
     }
     
-    func signup(with credentials: AuthCredentials) async {
+    func signup(with credentials: AuthCredentials) async throws {
         #if canImport(Supabase)
         isLoading = true
         authError = nil
@@ -77,6 +78,7 @@ class RealAuthService: ObservableObject {
                     self.user = nil
                     self.isAuthenticated = false
                     self.isLoading = false
+                    self.signupCompletedSuccessfully = true
                 }
                 print("Signup successful for \(user.email ?? "user"). Please check your email to confirm your account.")
             }
@@ -85,12 +87,14 @@ class RealAuthService: ObservableObject {
                 self.authError = error.localizedDescription
                 self.isLoading = false
             }
+            throw error
         }
         #else
         await MainActor.run {
             self.authError = "Supabase package not available"
             self.isLoading = false
         }
+        throw NSError(domain: "RealAuthService", code: 0, userInfo: [NSLocalizedDescriptionKey: "Supabase package not available"])
         #endif
     }
     
@@ -157,5 +161,9 @@ class RealAuthService: ObservableObject {
             print("Failed to resend confirmation email: \(error)")
         }
         #endif
+    }
+
+    func resetSignupState() {
+        signupCompletedSuccessfully = false
     }
 }

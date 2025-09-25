@@ -1362,9 +1362,17 @@ class AuthViewModel: ObservableObject {
     @Published var isActionDisabled = false
     @Published var didCompleteAction = false
     @Published var signupCompletedSuccessfully = false
-    
-    private let authService = MockAuthService.shared
-    
+
+    private let authService = RealAuthService.shared
+    private var cancellables = Set<AnyCancellable>()
+
+    init() {
+        // Observe changes in RealAuthService's signupCompletedSuccessfully property
+        authService.$signupCompletedSuccessfully
+            .assign(to: \.signupCompletedSuccessfully, on: self)
+            .store(in: &cancellables)
+    }
+
     func performAction() async {
         isActionDisabled = true
         clearError()
@@ -1393,10 +1401,10 @@ class AuthViewModel: ObservableObject {
                 
                 try await authService.signup(with: credentials)
 
-                print("🎉 DEBUG: Signup successful, setting completion states")
+                print("🎉 DEBUG: Signup successful, completion will be observed via Combine")
                 await MainActor.run {
-                    print("🎉 DEBUG: Setting signupCompletedSuccessfully = true")
-                    self.signupCompletedSuccessfully = true
+                    print("🎉 DEBUG: signupCompletedSuccessfully is now: \(self.signupCompletedSuccessfully)")
+                    print("🎉 DEBUG: RealAuthService signupCompletedSuccessfully: \(self.authService.signupCompletedSuccessfully)")
                     print("🎉 DEBUG: Setting didCompleteAction = true")
                     self.didCompleteAction = true
                     print("🎉 DEBUG: Completion states set successfully")
@@ -1535,12 +1543,12 @@ struct FeatureRow: View {
     }
 }
 
-// MARK: - App Entry Point
-@main
+// MARK: - App Entry Point (Disabled - Using RecipeGenieApp instead)
+// @main
 struct SimplifiedRecipeGenieApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            SimplifiedRecipeGenie()
                 .onOpenURL { url in
                     handleDeepLink(url: url)
                 }

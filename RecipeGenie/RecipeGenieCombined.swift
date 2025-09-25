@@ -48,6 +48,27 @@ struct Profile: Codable {
     let subscriptionStatus: String // 'free' or 'active'
 }
 
+// MARK: - Recipe Export Format
+enum RecipeFormat: String, CaseIterable {
+    case text = "Text"
+    case markdown = "Markdown"
+    case html = "HTML"
+    case json = "JSON"
+
+    var displayName: String {
+        return self.rawValue
+    }
+
+    var fileExtension: String {
+        switch self {
+        case .text: return "txt"
+        case .markdown: return "md"
+        case .html: return "html"
+        case .json: return "json"
+        }
+    }
+}
+
 // MARK: - Utils
 class ImageUtils {
     static func convertToBase64(image: UIImage) -> (base64: String, mimeType: String)? {
@@ -56,14 +77,136 @@ class ImageUtils {
             let base64String = jpegData.base64EncodedString()
             return (base64String, "image/jpeg")
         }
-        
+
         // Try PNG if JPEG failed
         if let pngData = image.pngData() {
             let base64String = pngData.base64EncodedString()
             return (base64String, "image/png")
         }
-        
+
         return nil
+    }
+}
+
+class RecipeFormatter {
+    static func formatRecipe(_ recipe: Recipe, as format: RecipeFormat) -> String {
+        switch format {
+        case .text:
+            return formatAsText(recipe)
+        case .markdown:
+            return formatAsMarkdown(recipe)
+        case .html:
+            return formatAsHTML(recipe)
+        case .json:
+            return formatAsJSON(recipe)
+        }
+    }
+
+    private static func formatAsText(_ recipe: Recipe) -> String {
+        var output = "\(recipe.title)\n\n"
+
+        output += "INGREDIENTS:\n"
+        for (index, ingredient) in recipe.ingredients.enumerated() {
+            output += "\(index + 1). \(ingredient)\n"
+        }
+
+        output += "\nINSTRUCTIONS:\n"
+        for (index, instruction) in recipe.instructions.enumerated() {
+            output += "\(index + 1). \(instruction)\n"
+        }
+
+        return output
+    }
+
+    private static func formatAsMarkdown(_ recipe: Recipe) -> String {
+        var output = "# \(recipe.title)\n\n"
+
+        output += "## Ingredients\n\n"
+        for (index, ingredient) in recipe.ingredients.enumerated() {
+            output += "\(index + 1). \(ingredient)\n"
+        }
+
+        output += "\n## Instructions\n\n"
+        for (index, instruction) in recipe.instructions.enumerated() {
+            output += "\(index + 1). \(instruction)\n"
+        }
+
+        return output
+    }
+
+    private static func formatAsHTML(_ recipe: Recipe) -> String {
+        var output = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>\(recipe.title)</title>
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                h1 { color: #8B4513; border-bottom: 2px solid #8B4513; padding-bottom: 10px; }
+                h2 { color: #CD853F; margin-top: 30px; }
+                ol { padding-left: 20px; }
+                li { margin-bottom: 8px; line-height: 1.5; }
+            </style>
+        </head>
+        <body>
+            <h1>\(recipe.title)</h1>
+
+            <h2>Ingredients</h2>
+            <ol>
+        """
+
+        for ingredient in recipe.ingredients {
+            output += "        <li>\(ingredient)</li>\n"
+        }
+
+        output += """
+            </ol>
+
+            <h2>Instructions</h2>
+            <ol>
+        """
+
+        for instruction in recipe.instructions {
+            output += "        <li>\(instruction)</li>\n"
+        }
+
+        output += """
+            </ol>
+        </body>
+        </html>
+        """
+
+        return output
+    }
+
+    private static func formatAsJSON(_ recipe: Recipe) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+        do {
+            let jsonData = try encoder.encode(recipe)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                return jsonString
+            }
+        } catch {
+            print("Error encoding recipe to JSON: \(error)")
+        }
+
+        return "{\"error\": \"Failed to encode recipe as JSON\"}"
+    }
+}
+
+class ClipboardUtils {
+    static func copyToClipboard(_ text: String) {
+        UIPasteboard.general.string = text
+    }
+
+    static func showCopyFeedback() {
+        // Generate haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
     }
 }
 
@@ -292,7 +435,7 @@ class RecipeGenieViewModel: ObservableObject {
     private let FREE_LIMIT_AUTH = 3
     private let FREE_LIMIT_ANON = 1
     
-    let authService = RealAuthService.shared
+    @ObservedObject var authService = RealAuthService.shared
     let profileService = RealProfileService.shared
     
     func handleImageSelection(_ image: UIImage) {
@@ -788,8 +931,8 @@ struct ImageUploaderView: View {
         .sheet(isPresented: $isImagePickerPresented) {
             ImagePicker(selectedImage: $selectedImage)
         }
-        .onChange(of: selectedImage) { _ in
-            if let image = selectedImage {
+        .onChange(of: selectedImage) { oldValue, newValue in
+            if let image = newValue {
                 viewModel.handleImageSelection(image)
             }
         }
@@ -836,7 +979,9 @@ struct ImagePicker: UIViewControllerRepresentable {
 
 struct RecipeDisplayView: View {
     let recipe: Recipe
-    
+    @State private var selectedFormat: RecipeFormat = .text
+    @State private var showCopySuccess = false
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -847,7 +992,14 @@ struct RecipeDisplayView: View {
                     .foregroundColor(Color("brand-brown"))
                     .multilineTextAlignment(.center)
                     .padding(.bottom)
-                
+
+                // Copy controls section
+                RecipeCopyControlsView(
+                    recipe: recipe,
+                    selectedFormat: $selectedFormat,
+                    showCopySuccess: $showCopySuccess
+                )
+
                 // Ingredients section
                 SectionView(title: "Ingredients") {
                     VStack(alignment: .leading, spacing: 8) {
@@ -864,7 +1016,7 @@ struct RecipeDisplayView: View {
                         }
                     }
                 }
-                
+
                 // Instructions section
                 SectionView(title: "Instructions") {
                     VStack(alignment: .leading, spacing: 12) {
@@ -881,9 +1033,169 @@ struct RecipeDisplayView: View {
                         }
                     }
                 }
+
+                // Preview section
+                RecipePreviewView(recipe: recipe, format: selectedFormat)
             }
             .padding()
         }
+        .overlay(
+            // Copy success feedback
+            VStack {
+                if showCopySuccess {
+                    CopySuccessBanner()
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                Spacer()
+            }
+            .animation(.easeInOut(duration: 0.3), value: showCopySuccess)
+        )
+    }
+}
+
+struct RecipeCopyControlsView: View {
+    let recipe: Recipe
+    @Binding var selectedFormat: RecipeFormat
+    @Binding var showCopySuccess: Bool
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Format selector
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Copy Format")
+                    .font(.headline)
+                    .foregroundColor(Color("brand-brown"))
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(RecipeFormat.allCases, id: \.self) { format in
+                            Button(action: {
+                                selectedFormat = format
+                            }) {
+                                Text(format.displayName)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(selectedFormat == format ? .white : Color("brand-brown"))
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        selectedFormat == format
+                                            ? Color("brand-orange")
+                                            : Color("brand-gray").opacity(0.1)
+                                    )
+                                    .cornerRadius(20)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                }
+            }
+
+            // Copy button
+            Button(action: {
+                copyRecipe()
+            }) {
+                HStack {
+                    Image(systemName: "doc.on.clipboard")
+                        .font(.headline)
+                    Text("Copy Recipe as \(selectedFormat.displayName)")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color("brand-green"))
+                .cornerRadius(12)
+            }
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(radius: 2)
+    }
+
+    private func copyRecipe() {
+        let formattedRecipe = RecipeFormatter.formatRecipe(recipe, as: selectedFormat)
+        ClipboardUtils.copyToClipboard(formattedRecipe)
+        ClipboardUtils.showCopyFeedback()
+
+        // Show success banner
+        showCopySuccess = true
+
+        // Hide success banner after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            showCopySuccess = false
+        }
+    }
+}
+
+struct RecipePreviewView: View {
+    let recipe: Recipe
+    let format: RecipeFormat
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Preview (\(format.displayName))")
+                    .font(.headline)
+                    .foregroundColor(Color("brand-brown"))
+
+                Spacer()
+
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        isExpanded.toggle()
+                    }
+                }) {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.headline)
+                        .foregroundColor(Color("brand-orange"))
+                }
+            }
+
+            if isExpanded {
+                ScrollView {
+                    Text(RecipeFormatter.formatRecipe(recipe, as: format))
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(Color("brand-gray"))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color("cream").opacity(0.5))
+                        .cornerRadius(8)
+                }
+                .frame(maxHeight: 300)
+                .transition(.opacity.combined(with: .slide))
+            }
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(radius: 2)
+    }
+}
+
+struct CopySuccessBanner: View {
+    var body: some View {
+        HStack {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.white)
+                .font(.title2)
+
+            Text("Recipe copied to clipboard!")
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+
+            Spacer()
+        }
+        .padding()
+        .background(Color("brand-green"))
+        .cornerRadius(12)
+        .shadow(radius: 8)
+        .padding(.horizontal)
+        .padding(.top, 8)
     }
 }
 
@@ -965,11 +1277,103 @@ struct AuthModalView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                Text("Login / Sign Up")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(Color("brand-brown"))
+            if authViewModel.signupCompletedSuccessfully {
+                // Email verification modal
+                VStack(spacing: 24) {
+                    // Success icon and title
+                    VStack(spacing: 16) {
+                        Image(systemName: "envelope.circle.fill")
+                            .font(.system(size: 64))
+                            .foregroundColor(Color("brand-orange"))
+
+                        Text("Account Created!")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(Color("brand-brown"))
+                    }
+
+                    // Email verification instructions
+                    VStack(spacing: 16) {
+                        Text("Please check your email to verify your account")
+                            .font(.headline)
+                            .foregroundColor(Color("brand-brown"))
+                            .multilineTextAlignment(.center)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("1. Check your email inbox")
+                            Text("2. Click the verification link")
+                            Text("3. You'll be automatically logged in")
+                        }
+                        .foregroundColor(Color("brand-gray"))
+                        .padding()
+                        .background(Color("cream"))
+                        .cornerRadius(10)
+                    }
+
+                    // Support email
+                    VStack(spacing: 8) {
+                        Text("Need help?")
+                            .font(.footnote)
+                            .foregroundColor(Color("brand-gray"))
+
+                        Text("contact-us@dinner-brain.com")
+                            .font(.footnote)
+                            .foregroundColor(Color("brand-orange"))
+                            .underline()
+                    }
+
+                    // Action buttons
+                    VStack(spacing: 12) {
+                        // Done button
+                        Button("Done") {
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color("brand-orange"))
+                        .cornerRadius(10)
+
+                        // Create new account button
+                        Button("Create New Account") {
+                            // Reset the signup completion state
+                            authViewModel.resetSignupState()
+                            // Clear any existing form data
+                            authViewModel.email = ""
+                            authViewModel.password = ""
+                            authViewModel.confirmPassword = ""
+                            // Switch to signup mode
+                            authViewModel.isSignupMode = true
+                        }
+                        .font(.subheadline)
+                        .foregroundColor(Color("brand-orange"))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Color.clear)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color("brand-orange"), lineWidth: 1)
+                        )
+                    }
+                    .padding(.horizontal)
+                }
+                .padding()
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Close") {
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    }
+                }
+            } else {
+                // Normal login/signup form
+                VStack(spacing: 20) {
+                    Text("Login / Sign Up")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(Color("brand-brown"))
                 
                 Text("To continue extracting recipes, please log in or create an account. As a registered user, you get 3 free recipe extractions.")
                     .multilineTextAlignment(.center)
@@ -1041,9 +1445,11 @@ struct AuthModalView: View {
                     }
                 }
             }
+            } // End else block
         }
-        .onChange(of: authViewModel.didCompleteAction) { completed in
-            if completed {
+        .onChange(of: authViewModel.didCompleteAction) { oldValue, completed in
+            if completed && !authViewModel.signupCompletedSuccessfully {
+                // Only dismiss for login success, not signup success
                 presentationMode.wrappedValue.dismiss()
             }
         }
@@ -1058,9 +1464,18 @@ class AuthViewModel: ObservableObject {
     @Published var isSignupMode = true
     @Published var isActionDisabled = false
     @Published var didCompleteAction = false
-    
+    @Published var signupCompletedSuccessfully = false
+
     private let authService = RealAuthService.shared
-    
+    private var cancellables = Set<AnyCancellable>()
+
+    init() {
+        // Observe changes in RealAuthService's signupCompletedSuccessfully property
+        authService.$signupCompletedSuccessfully
+            .assign(to: \.signupCompletedSuccessfully, on: self)
+            .store(in: &cancellables)
+    }
+
     func performAction() async {
         isActionDisabled = true
         clearError()
@@ -1086,19 +1501,30 @@ class AuthViewModel: ObservableObject {
                 return
             }
             
-            await authService.signup(with: credentials)
-        } else {
-            await authService.login(with: credentials)
-        }
-        
-        if let error = authService.authError {
-            await MainActor.run {
-                self.errorMessage = error
-                self.isActionDisabled = false
+            do {
+                try await authService.signup(with: credentials)
+                await MainActor.run {
+                    self.didCompleteAction = true
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = error.localizedDescription
+                    self.isActionDisabled = false
+                }
+                return
             }
         } else {
-            await MainActor.run {
-                self.didCompleteAction = true
+            await authService.login(with: credentials)
+
+            if let error = authService.authError {
+                await MainActor.run {
+                    self.errorMessage = error
+                    self.isActionDisabled = false
+                }
+            } else {
+                await MainActor.run {
+                    self.didCompleteAction = true
+                }
             }
         }
     }
@@ -1106,6 +1532,11 @@ class AuthViewModel: ObservableObject {
     func clearError() {
         errorMessage = ""
         authService.authError = nil
+    }
+
+    func resetSignupState() {
+        authService.resetSignupState()
+        signupCompletedSuccessfully = false
     }
 }
 
