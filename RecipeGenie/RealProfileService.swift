@@ -37,9 +37,19 @@ class RealProfileService {
                 return nil
             }
             
+            // Handle extraction_count which might be stored as String or Int
+            let extractionCount: Int
+            if let countString = data["extraction_count"] as? String {
+                extractionCount = Int(countString) ?? 0
+            } else if let countInt = data["extraction_count"] as? Int {
+                extractionCount = countInt
+            } else {
+                extractionCount = 0
+            }
+
             return Profile(
                 id: data["id"] as? String ?? "",
-                extractionCount: data["extraction_count"] as? Int ?? 0,
+                extractionCount: extractionCount,
                 subscriptionStatus: data["subscription_status"] as? String ?? "free"
             )
         } catch {
@@ -63,7 +73,7 @@ class RealProfileService {
                 .from("profiles")
                 .insert([
                     "id": user.id,
-                    "extraction_count": "0",
+                    "extraction_count": 0,
                     "subscription_status": "free"
                 ])
                 .execute()
@@ -73,9 +83,19 @@ class RealProfileService {
                 throw ProfileError.profileNotFound
             }
             
+            // Handle extraction_count which might be stored as String or Int
+            let extractionCount: Int
+            if let countString = profileData["extraction_count"] as? String {
+                extractionCount = Int(countString) ?? 0
+            } else if let countInt = profileData["extraction_count"] as? Int {
+                extractionCount = countInt
+            } else {
+                extractionCount = 0
+            }
+
             return Profile(
                 id: profileData["id"] as? String ?? "",
-                extractionCount: profileData["extraction_count"] as? Int ?? 0,
+                extractionCount: extractionCount,
                 subscriptionStatus: profileData["subscription_status"] as? String ?? "free"
             )
         } catch {
@@ -103,10 +123,18 @@ class RealProfileService {
                 .single()
                 .execute()
 
-            guard let currentData = currentResponse.value as? [String: Any],
-                  let currentCount = currentData["extraction_count"] as? String,
-                  let count = Int(currentCount) else {
+            guard let currentData = currentResponse.value as? [String: Any] else {
                 throw ProfileError.updateFailed
+            }
+
+            // Handle extraction_count which might be stored as String or Int
+            let count: Int
+            if let countString = currentData["extraction_count"] as? String {
+                count = Int(countString) ?? 0
+            } else if let countInt = currentData["extraction_count"] as? Int {
+                count = countInt
+            } else {
+                count = 0
             }
 
             let newCount = count + 1
@@ -114,7 +142,7 @@ class RealProfileService {
             // Update with new count
             _ = try await supabase
                 .from("profiles")
-                .update(["extraction_count": "\(newCount)"])
+                .update(["extraction_count": newCount])
                 .eq("id", value: userId)
                 .execute()
 

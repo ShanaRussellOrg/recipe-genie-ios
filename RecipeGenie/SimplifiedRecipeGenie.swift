@@ -466,13 +466,38 @@ class RecipeGenieViewModel: ObservableObject {
             }
             return
         } else if authService.isAuthenticated {
-            if let userId = authService.user?.id,
-               let profile = try? await profileService.getProfile(for: userId),
-               profile.subscriptionStatus == "free" && profile.extractionCount >= FREE_LIMIT_AUTH {
-                DispatchQueue.main.async {
-                    self.isPaywallPresented = true
+            if let userId = authService.user?.id {
+                do {
+                    // Try to get existing profile
+                    var profile = try await profileService.getProfile(for: userId)
+
+                    // If no profile exists, create one
+                    if profile == nil {
+                        guard let user = authService.user else {
+                            DispatchQueue.main.async {
+                                self.errorMessage = "User profile error. Please log in again."
+                            }
+                            return
+                        }
+                        profile = try await profileService.createProfile(for: user)
+                    }
+
+                    // Check if user has exceeded free limit
+                    if let userProfile = profile,
+                       userProfile.subscriptionStatus == "free" && userProfile.extractionCount >= FREE_LIMIT_AUTH {
+                        DispatchQueue.main.async {
+                            self.isPaywallPresented = true
+                        }
+                        return
+                    }
+                } catch {
+                    print("Error checking user profile: \(error)")
+                    // If we can't check the profile, assume they've hit the limit for safety
+                    DispatchQueue.main.async {
+                        self.isPaywallPresented = true
+                    }
+                    return
                 }
-                return
             }
         }
         

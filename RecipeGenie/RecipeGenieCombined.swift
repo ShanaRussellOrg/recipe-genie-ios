@@ -463,13 +463,51 @@ class RecipeGenieViewModel: ObservableObject {
             }
             return
         } else if authService.isAuthenticated {
-            if let userId = authService.user?.id,
-               let profile = try? await profileService.getProfile(for: userId),
-               profile.subscriptionStatus == "free" && profile.extractionCount >= FREE_LIMIT_AUTH {
-                DispatchQueue.main.async {
-                    self.isPaywallPresented = true
+            print("🔒 Authenticated user detected, checking limits...")
+            if let userId = authService.user?.id {
+                print("👤 User ID: \(userId)")
+                do {
+                    // Try to get existing profile
+                    var profile = try await profileService.getProfile(for: userId)
+                    print("📊 Retrieved profile: \(profile?.extractionCount ?? -1) extractions")
+
+                    // If no profile exists, create one
+                    if profile == nil {
+                        print("🆕 No profile found, creating new profile...")
+                        guard let user = authService.user else {
+                            print("❌ No user found for profile creation")
+                            DispatchQueue.main.async {
+                                self.errorMessage = "User profile error. Please log in again."
+                            }
+                            return
+                        }
+                        profile = try await profileService.createProfile(for: user)
+                        print("✅ Created new profile with \(profile?.extractionCount ?? -1) extractions")
+                    }
+
+                    // Check if user has exceeded free limit
+                    if let userProfile = profile {
+                        print("🔍 Checking limits: \(userProfile.extractionCount)/\(FREE_LIMIT_AUTH) (status: \(userProfile.subscriptionStatus))")
+                        if userProfile.subscriptionStatus == "free" && userProfile.extractionCount >= FREE_LIMIT_AUTH {
+                            print("🚫 Limit exceeded! Showing paywall...")
+                            DispatchQueue.main.async {
+                                self.isPaywallPresented = true
+                            }
+                            return
+                        } else {
+                            print("✅ Within limits, proceeding with extraction...")
+                        }
+                    }
+                } catch {
+                    print("❌ Error checking user profile: \(error)")
+                    // If we can't check the profile, assume they've hit the limit for safety
+                    DispatchQueue.main.async {
+                        self.isPaywallPresented = true
+                    }
+                    return
                 }
-                return
+            } else {
+                print("❌ No user ID found for authenticated user")
             }
         }
         
