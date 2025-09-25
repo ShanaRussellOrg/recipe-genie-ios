@@ -34,6 +34,7 @@ class RealProfileService {
                 .execute()
             
             guard let data = response.value as? [String: Any] else {
+                print("Failed to cast response.value to [String: Any], got: \(type(of: response.value))")
                 return nil
             }
             
@@ -73,13 +74,15 @@ class RealProfileService {
                 .from("profiles")
                 .insert([
                     "id": user.id,
-                    "extraction_count": 0,
+                    "extraction_count": "0",
                     "subscription_status": "free"
                 ])
+                .select()
+                .single()
                 .execute()
-            
-            guard let data = response.value as? [[String: Any]],
-                  let profileData = data.first else {
+
+            guard let profileData = response.value as? [String: Any] else {
+                print("Failed to cast insert response.value to [String: Any], got: \(type(of: response.value))")
                 throw ProfileError.profileNotFound
             }
             
@@ -124,6 +127,7 @@ class RealProfileService {
                 .execute()
 
             guard let currentData = currentResponse.value as? [String: Any] else {
+                print("Failed to cast currentResponse.value to [String: Any], got: \(type(of: currentResponse.value))")
                 throw ProfileError.updateFailed
             }
 
@@ -142,7 +146,7 @@ class RealProfileService {
             // Update with new count
             _ = try await supabase
                 .from("profiles")
-                .update(["extraction_count": newCount])
+                .update(["extraction_count": "\(newCount)"])
                 .eq("id", value: userId)
                 .execute()
 
