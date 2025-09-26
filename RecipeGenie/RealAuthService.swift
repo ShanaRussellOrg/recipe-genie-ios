@@ -132,20 +132,33 @@ class RealAuthService: ObservableObject {
     }
     
     func logout() async {
+        print("🚪 Logout initiated...")
         #if canImport(Supabase)
         do {
+            print("🔓 Signing out from Supabase...")
             try await supabase?.auth.signOut()
+            await MainActor.run {
+                print("✅ Updating auth state: user set to nil, isAuthenticated = false")
+                self.user = nil
+                self.isAuthenticated = false
+                self.authError = nil
+            }
+            print("✅ Logout successful!")
+        } catch {
+            print("❌ Logout error: \(error)")
+            // Even if Supabase logout fails, clear local state
             await MainActor.run {
                 self.user = nil
                 self.isAuthenticated = false
+                self.authError = "Logout failed: \(error.localizedDescription)"
             }
-        } catch {
-            print("Logout error: \(error)")
         }
         #else
+        print("📱 Mock logout (no Supabase)")
         await MainActor.run {
             self.user = nil
             self.isAuthenticated = false
+            self.authError = nil
         }
         #endif
     }

@@ -630,6 +630,9 @@ struct HeaderView: View {
                         Task {
                             do {
                                 try await viewModel.authService.logout()
+                                await MainActor.run {
+                                    viewModel.resetState()
+                                }
                             } catch {
                                 print("Logout error: \(error)")
                             }

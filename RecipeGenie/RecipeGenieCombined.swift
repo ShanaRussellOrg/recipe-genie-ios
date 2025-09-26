@@ -639,6 +639,9 @@ struct HeaderView: View {
                     Button(action: {
                         Task {
                             await viewModel.authService.logout()
+                            await MainActor.run {
+                                viewModel.resetState()
+                            }
                         }
                     }) {
                         Text("Logout")
