@@ -500,11 +500,48 @@ class RecipeGenieViewModel: ObservableObject {
                     }
                 } catch {
                     print("❌ Error checking user profile: \(error)")
-                    // If we can't check the profile, assume they've hit the limit for safety
-                    DispatchQueue.main.async {
-                        self.isPaywallPresented = true
+
+                    // If profile doesn't exist (PGRST116), try to create one
+                    if error.localizedDescription.contains("PGRST116") || error.localizedDescription.contains("Cannot coerce") {
+                        print("🔧 Attempting to create missing profile...")
+                        do {
+                            guard let user = authService.user else {
+                                print("❌ No user found for profile creation")
+                                DispatchQueue.main.async {
+                                    self.errorMessage = "User profile error. Please log in again."
+                                }
+                                return
+                            }
+
+                            let newProfile = try await profileService.createProfile(for: user)
+                            print("✅ Successfully created new profile with \(newProfile.extractionCount) extractions")
+
+                            // Check limits for newly created profile (should be 0, so within limits)
+                            if newProfile.subscriptionStatus == "free" && newProfile.extractionCount >= FREE_LIMIT_AUTH {
+                                print("🚫 New profile already at limit (unexpected)")
+                                DispatchQueue.main.async {
+                                    self.isPaywallPresented = true
+                                }
+                                return
+                            } else {
+                                print("✅ New profile within limits, proceeding...")
+                            }
+                        } catch createError {
+                            print("❌ Failed to create profile: \(createError)")
+                            // If we can't create a profile, show paywall for safety
+                            DispatchQueue.main.async {
+                                self.isPaywallPresented = true
+                            }
+                            return
+                        }
+                    } else {
+                        print("❌ Non-profile related error, showing paywall for safety")
+                        // For other errors, show paywall as safety measure
+                        DispatchQueue.main.async {
+                            self.isPaywallPresented = true
+                        }
+                        return
                     }
-                    return
                 }
             } else {
                 print("❌ No user ID found for authenticated user")

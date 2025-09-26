@@ -364,7 +364,7 @@ enum AuthError: Error, LocalizedError {
     case networkError
     case userAlreadyRegistered
     case passwordTooWeak
-    
+
     var errorDescription: String? {
         switch self {
         case .invalidCredentials:
@@ -375,6 +375,23 @@ enum AuthError: Error, LocalizedError {
             return "This email is already registered. Please try logging in instead."
         case .passwordTooWeak:
             return "Password is too weak. It must be at least 6 characters long."
+        }
+    }
+}
+
+enum ProfileError: Error, LocalizedError {
+    case profileNotFound
+    case clientNotInitialized
+    case updateFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .profileNotFound:
+            return "Profile not found"
+        case .clientNotInitialized:
+            return "Database client not initialized"
+        case .updateFailed:
+            return "Failed to update profile"
         }
     }
 }
@@ -473,6 +490,7 @@ class RecipeGenieViewModel: ObservableObject {
 
                     // If no profile exists, create one
                     if profile == nil {
+                        print("🔧 No profile found for user \(userId), creating one...")
                         guard let user = authService.user else {
                             DispatchQueue.main.async {
                                 self.errorMessage = "User profile error. Please log in again."
@@ -480,6 +498,7 @@ class RecipeGenieViewModel: ObservableObject {
                             return
                         }
                         profile = try await profileService.createProfile(for: user)
+                        print("✅ Successfully created new profile with \(profile?.extractionCount ?? 0) extractions")
                     }
 
                     // Check if user has exceeded free limit
@@ -492,11 +511,37 @@ class RecipeGenieViewModel: ObservableObject {
                     }
                 } catch {
                     print("Error checking user profile: \(error)")
-                    // If we can't check the profile, assume they've hit the limit for safety
-                    DispatchQueue.main.async {
-                        self.isPaywallPresented = true
+
+                    // For mock service, if profile creation fails, try to create one manually
+                    // This simulates the same fallback behavior as the real service
+                    if let user = authService.user {
+                        do {
+                            print("🔧 Attempting to create missing profile for mock service...")
+                            let newProfile = try await profileService.createProfile(for: user)
+                            print("✅ Successfully created new profile with \(newProfile.extractionCount) extractions")
+
+                            // Check if user has exceeded free limit with the new profile
+                            if newProfile.subscriptionStatus == "free" && newProfile.extractionCount >= FREE_LIMIT_AUTH {
+                                DispatchQueue.main.async {
+                                    self.isPaywallPresented = true
+                                }
+                                return
+                            }
+                        } catch {
+                            print("❌ Failed to create profile: \(error)")
+                            // If we can't check or create the profile, assume they've hit the limit for safety
+                            DispatchQueue.main.async {
+                                self.isPaywallPresented = true
+                            }
+                            return
+                        }
+                    } else {
+                        // If we can't check the profile and no user, assume they've hit the limit for safety
+                        DispatchQueue.main.async {
+                            self.isPaywallPresented = true
+                        }
+                        return
                     }
-                    return
                 }
             }
         }
