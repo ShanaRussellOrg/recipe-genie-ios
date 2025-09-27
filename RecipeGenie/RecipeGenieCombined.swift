@@ -445,7 +445,11 @@ class RecipeGenieViewModel: ObservableObject {
     }
     
     func extractRecipe() async {
+        print("🚀 extractRecipe() called")
+        print("🔐 Auth state: isAuthenticated=\(authService.isAuthenticated), user=\(authService.user?.email ?? "nil")")
+
         guard let image = self.image else {
+            print("❌ No image selected")
             DispatchQueue.main.async {
                 self.errorMessage = "Please select an image first."
             }
@@ -455,9 +459,12 @@ class RecipeGenieViewModel: ObservableObject {
         // Check usage limits based on auth state
         let isAnonymous = !authService.isAuthenticated
         let anonymousUsageCount = UserDefaults.standard.integer(forKey: "anonymousUsageCount")
-        
+
+        print("📊 Usage check: isAnonymous=\(isAnonymous), anonymousCount=\(anonymousUsageCount), FREE_LIMIT_ANON=\(FREE_LIMIT_ANON)")
+
         // Check usage limits
         if isAnonymous && anonymousUsageCount >= FREE_LIMIT_ANON {
+            print("🚫 Anonymous user hit limit, showing auth modal")
             DispatchQueue.main.async {
                 self.isAuthModalPresented = true
             }
