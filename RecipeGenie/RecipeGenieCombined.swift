@@ -526,8 +526,8 @@ class RecipeGenieViewModel: ObservableObject {
                             } else {
                                 print("✅ New profile within limits, proceeding...")
                             }
-                        } catch createError {
-                            print("❌ Failed to create profile: \(createError)")
+                        } catch let profileCreationError {
+                            print("❌ Failed to create profile: \(profileCreationError)")
                             // If we can't create a profile, show paywall for safety
                             DispatchQueue.main.async {
                                 self.isPaywallPresented = true
